@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Movie Night</title>
+    <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+    <div id="app">
+        <!-- ─── Landing Page ─────────────────────────────────────── -->
+        <div v-if="phase === 'landing'" class="screen landing-screen">
+            <div class="landing-hero">
+                <div class="logo-icon">🎬</div>
+                <h1>Movie Night</h1>
+                <p class="tagline">Find the perfect movie for your group</p>
+            </div>
+
+            <div class="landing-actions">
+                <div class="name-input-wrap">
+                    <input
+                        v-model="playerName"
+                        type="text"
+                        placeholder="Your name"
+                        class="input-field"
+                        maxlength="20"
+                    />
+                </div>
+
+                <button class="btn btn-primary btn-large" @click="showCreate = true" :disabled="!playerName.trim()">
+                    Create Session
+                </button>
+                <button class="btn btn-secondary btn-large" @click="showJoin = true" :disabled="!playerName.trim()">
+                    Join Session
+                </button>
+            </div>
+
+            <!-- Create modal -->
+            <div v-if="showCreate" class="modal-overlay" @click.self="showCreate = false">
+                <div class="modal">
+                    <h2>Create Session</h2>
+                    <label class="modal-label">
+                        Maximum movie length (minutes)
+                        <input v-model.number="maxLength" type="number" min="60" max="300" class="input-field" />
+                    </label>
+                    <label class="modal-label">
+                        Question set
+                        <div class="toggle-group">
+                            <button class="btn toggle-btn" :class="{ active: questionMode === 'short' }" @click="questionMode = 'short'">Short (8 Qs)</button>
+                            <button class="btn toggle-btn" :class="{ active: questionMode === 'full' }" @click="questionMode = 'full'">Full (12 Qs)</button>
+                        </div>
+                    </label>
+                    <div class="modal-actions">
+                        <button class="btn btn-ghost" @click="showCreate = false">Cancel</button>
+                        <button class="btn btn-primary" @click="createSession">Create</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Join modal -->
+            <div v-if="showJoin" class="modal-overlay" @click.self="showJoin = false">
+                <div class="modal">
+                    <h2>Join Session</h2>
+                    <label class="modal-label">
+                        Session code
+                        <input
+                            v-model="joinCode"
+                            type="text"
+                            maxlength="5"
+                            placeholder="ABCDE"
+                            class="input-field input-code"
+                            @input="joinCode = joinCode.toUpperCase()"
+                        />
+                    </label>
+                    <div class="modal-actions">
+                        <button class="btn btn-ghost" @click="showJoin = false">Cancel</button>
+                        <button class="btn btn-primary" @click="joinSession" :disabled="joinCode.trim().length < 5">Join</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ─── Lobby ────────────────────────────────────────────── -->
+        <div v-if="phase === 'lobby'" class="screen lobby-screen">
+            <div class="lobby-header">
+                <span class="screen-label">Session Code</span>
+                <div class="session-code">{{ sessionCode }}</div>
+                <p class="hint">Share this code with your group</p>
+            </div>
+
+            <div class="players-list">
+                <div v-for="p in players" :key="p.id" class="player-chip">
+                    <span class="player-avatar">{{ p.name.charAt(0).toUpperCase() }}</span>
+                    <span>{{ p.name }}</span>
+                    <span v-if="p.isCreator" class="badge">Host</span>
+                </div>
+            </div>
+
+            <button
+                v-if="isCreator"
+                class="btn btn-primary btn-large lobby-start"
+                @click="startSession"
+                :disabled="players.length < 1"
+            >
+                Start ({{ players.length }} player{{ players.length !== 1 ? 's' : '' }})
+            </button>
+            <p v-else class="hint center">Waiting for host to start…</p>
+        </div>
+
+        <!-- ─── Questions ────────────────────────────────────────── -->
+        <div v-if="phase === 'questions'" class="screen question-screen">
+            <div class="progress-bar">
+                <div class="progress-fill" :style="{ width: questionProgress + '%' }"></div>
+            </div>
+            <span class="q-counter">{{ currentQuestionIdx + 1 }} / {{ questions.length }}</span>
+
+            <div class="question-card" :key="currentQuestion.id">
+                <h2 class="q-text">{{ currentQuestion.text }}</h2>
+
+                <!-- Scale (1-10) -->
+                <div v-if="currentQuestion.isScale" class="scale-wrap">
+                    <div class="scale-labels"><span>🧘 Brain off</span><span>🧠 Full puzzle</span></div>
+                    <div class="scale-options">
+                        <button
+                            v-for="opt in currentQuestion.options"
+                            :key="opt"
+                            class="scale-btn"
+                            :class="{ selected: currentAnswer === opt }"
+                            @click="currentAnswer = opt"
+                        >{{ opt }}</button>
+                    </div>
+                </div>
+
+                <!-- Preset options -->
+                <div v-else-if="currentQuestion.options.length" class="option-list">
+                    <button
+                        v-for="opt in currentQuestion.options"
+                        :key="opt"
+                        class="option-btn"
+                        :class="{ selected: currentAnswer === opt }"
+                        @click="currentAnswer = opt"
+                    >{{ opt }}</button>
+                </div>
+
+                <!-- Write-in -->
+                <div v-if="currentQuestion.allowCustom" class="writein-wrap">
+                    <input
+                        v-model="customAnswer"
+                        type="text"
+                        :placeholder="currentQuestion.freeformOnly ? 'Type your answer…' : 'Or write your own…'"
+                        class="input-field"
+                        @input="currentAnswer = customAnswer.trim() ? customAnswer : currentAnswer"
+                    />
+                </div>
+            </div>
+
+            <button
+                class="btn btn-primary btn-large"
+                :disabled="!currentAnswer"
+                @click="submitAnswer"
+            >
+                {{ currentQuestionIdx < questions.length - 1 ? 'Next' : 'Submit' }}
+            </button>
+        </div>
+
+        <!-- ─── Waiting ──────────────────────────────────────────── -->
+        <div v-if="phase === 'waiting' || phase === 'waiting_votes'" class="screen waiting-screen">
+            <div class="spinner"></div>
+            <h2>Sit tight!</h2>
+            <p>Waiting for everyone to finish…</p>
+        </div>
+
+        <!-- ─── Generating ───────────────────────────────────────── -->
+        <div v-if="phase === 'generating'" class="screen waiting-screen">
+            <div class="spinner"></div>
+            <h2>Finding your perfect movies…</h2>
+            <p>Our AI is analyzing everyone's preferences</p>
+        </div>
+
+        <!-- ─── Voting / Swipe ───────────────────────────────────── -->
+        <div v-if="phase === 'voting'" class="screen voting-screen">
+            <span class="q-counter">{{ currentMovieIdx + 1 }} / {{ movies.length }}</span>
+
+            <div class="swipe-area" ref="swipeArea">
+                <div
+                    class="movie-card"
+                    :class="swipeClass"
+                    :style="cardStyle"
+                    @touchstart="onTouchStart"
+                    @touchmove="onTouchMove"
+                    @touchend="onTouchEnd"
+                    @mousedown="onMouseDown"
+                >
+                    <div class="swipe-indicator swipe-like" :style="{ opacity: likeOpacity }">👍</div>
+                    <div class="swipe-indicator swipe-nope" :style="{ opacity: nopeOpacity }">👎</div>
+
+                    <div class="movie-poster">🎥</div>
+                    <h2 class="movie-title">{{ currentMovie.title }}</h2>
+                    <div class="movie-meta">
+                        <span class="meta-chip">{{ currentMovie.year }}</span>
+                        <span class="meta-chip">{{ currentMovie.rating }}</span>
+                        <span class="meta-chip">{{ currentMovie.runtime }}</span>
+                        <span class="meta-chip">{{ currentMovie.genre }}</span>
+                    </div>
+                    <p class="movie-desc">{{ currentMovie.description }}</p>
+                    <p class="movie-fit"><strong>Why it fits:</strong> {{ currentMovie.whyItFits }}</p>
+                </div>
+            </div>
+
+            <div class="vote-buttons">
+                <button class="btn-round btn-nope" @click="vote(false)">👎</button>
+                <button class="btn-round btn-like" @click="vote(true)">👍</button>
+            </div>
+        </div>
+
+        <!-- ─── Results ──────────────────────────────────────────── -->
+        <div v-if="phase === 'results'" class="screen results-screen">
+            <div v-if="winner" class="winner-section">
+                <span class="confetti">🎉</span>
+                <h1 class="winner-label">Tonight's Pick</h1>
+                <div class="winner-card">
+                    <div class="movie-poster large">🎥</div>
+                    <h2>{{ winner.movie.title }}</h2>
+                    <div class="movie-meta">
+                        <span class="meta-chip">{{ winner.movie.year }}</span>
+                        <span class="meta-chip">{{ winner.movie.rating }}</span>
+                        <span class="meta-chip">{{ winner.movie.runtime }}</span>
+                    </div>
+                    <p class="movie-desc">{{ winner.movie.description }}</p>
+                    <p class="vote-tally">{{ winner.likes }} like{{ winner.likes !== 1 ? 's' : '' }}</p>
+                </div>
+            </div>
+
+            <div v-if="runnerUp" class="runner-up-section">
+                <p class="runner-up-label">Runner Up</p>
+                <div class="runner-up-card">
+                    <div class="movie-poster small">🎥</div>
+                    <div class="runner-up-info">
+                        <strong>{{ runnerUp.movie.title }}</strong> ({{ runnerUp.movie.year }})
+                        <span class="vote-tally small">{{ runnerUp.likes }} like{{ runnerUp.likes !== 1 ? 's' : '' }}</span>
+                    </div>
+                </div>
+            </div>
+
+            <button class="btn btn-secondary btn-large" @click="reset">New Session</button>
+        </div>
+
+        <!-- ─── Error toast ──────────────────────────────────────── -->
+        <div v-if="errorMsg" class="toast toast-error" @click="errorMsg = ''">
+            {{ errorMsg }}
+        </div>
+    </div>
+
+    <script src="https://unpkg.com/vue@3/dist/vue.global.prod.js"></script>
+    <script src="app.js"></script>
+</body>
+</html>
