@@ -22,8 +22,6 @@ Real-time collaborative movie picker using WebSockets and LLM.
 ```bash
 npm install
 npm start            # default port 3000
-# or
-PORT=3002 npm start  # custom port
 ```
 
 Open `http://localhost:3000` on your phone or browser.
