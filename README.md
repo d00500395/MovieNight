@@ -22,10 +22,14 @@ Real-time collaborative movie picker using WebSockets and LLM.
 ```bash
 npm install
 npm start            # default port 3000
+# or
+PORT=3001 npm start  # custom port
 ```
 
 Open `http://localhost:3000` on your phone or browser.
 
 ## Deployment
+
+The server is currently deployed at `https://autodexx.com/movienight/`
 
 Both the server and client are served from the same Node.js process. Deploy to any platform that supports Node.js + WebSocket (Render, Railway, Fly.io, etc.).

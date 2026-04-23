@@ -2,7 +2,7 @@
 
 const wsUrl = window.location.protocol === 'file:'
     ? 'ws://localhost:3000'
-    : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}`;
+    : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}${window.location.pathname}`;
 
 Vue.createApp({
     data() {
