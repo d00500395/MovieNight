@@ -7,11 +7,12 @@ const path = require('path');
 // ─── Express + HTTP server ────────────────────────────────────────────────────
 const app = express();
 const server = http.createServer(app);
-app.use(express.static(path.join(__dirname, 'public')));
+app.use('/movienight', express.static(path.join(__dirname, 'public')));
 
 // ─── Ollama LLM ───────────────────────────────────────────────────────────────
 const llm = new ChatOllama({
     baseUrl: 'http://golem:11434',
+<<<<<<< Updated upstream
     model: 'gpt-oss:20b',
     temperature: 0.7,
     httpOptions: {
@@ -19,6 +20,10 @@ const llm = new ChatOllama({
         keepAliveTimeout: 60000, // Keep connection alive
         headersTimeout: 120000   // Wait up to 2 min for headers
     }
+=======
+    model: 'qwen3.6:35b-a3b-coding-nvfp4',
+    temperature: 0.7
+>>>>>>> Stashed changes
 });
 
 // ─── Session store ────────────────────────────────────────────────────────────
@@ -122,7 +127,25 @@ function getSessionQuestions(mode) {
 }
 
 // ─── WebSocket server ─────────────────────────────────────────────────────────
-const wss = new WebSocketServer({ server });
+const wss = new WebSocketServer({ server, path: '/movienight/' });
+
+// Keep WebSocket connections alive through Cloudflare's 100s timeout
+const PING_INTERVAL = 30000; // ping every 30 seconds
+
+wss.on('connection', (ws) => {
+    ws.isAlive = true;
+    ws.on('pong', () => { ws.isAlive = true; });
+    // ... rest of your existing connection handler
+});
+
+// Heartbeat interval
+setInterval(() => {
+    wss.clients.forEach((ws) => {
+        if (!ws.isAlive) return ws.terminate();
+        ws.isAlive = false;
+        ws.ping();
+    });
+}, PING_INTERVAL);
 
 wss.on('connection', (ws) => {
     let userId = null;
@@ -454,7 +477,7 @@ function tallyAndBroadcastResults(code) {
 }
 
 // ─── Start server ─────────────────────────────────────────────────────────────
-const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
     console.log(`Movie Night server running on http://localhost:${PORT}`);
 });

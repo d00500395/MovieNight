@@ -1,8 +1,13 @@
 /* global Vue */
 
 const wsUrl = window.location.protocol === 'file:'
+<<<<<<< Updated upstream
     ? 'ws://localhost:3000'
     : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}${window.location.pathname}`;
+=======
+    ? 'ws://localhost:3001'
+    : `${window.location.protocol === 'https:' ? 'wss' : 'ws'}://${window.location.host}/movienight/`;
+>>>>>>> Stashed changes
 
 Vue.createApp({
     data() {
