@@ -12,18 +12,13 @@ app.use('/movienight', express.static(path.join(__dirname, 'public')));
 // ─── Ollama LLM ───────────────────────────────────────────────────────────────
 const llm = new ChatOllama({
     baseUrl: 'http://golem:11434',
-<<<<<<< Updated upstream
-    model: 'gpt-oss:20b',
+    model: 'qwen3.6:35b-a3b-coding-nvfp4',
     temperature: 0.7,
     httpOptions: {
-        timeout: 120000,        // 2 minutes for headers
-        keepAliveTimeout: 60000, // Keep connection alive
-        headersTimeout: 120000   // Wait up to 2 min for headers
+        timeout: 120000,
+        keepAliveTimeout: 60000,
+        headersTimeout: 120000
     }
-=======
-    model: 'qwen3.6:35b-a3b-coding-nvfp4',
-    temperature: 0.7
->>>>>>> Stashed changes
 });
 
 // ─── Session store ────────────────────────────────────────────────────────────
