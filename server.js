@@ -13,7 +13,12 @@ app.use(express.static(path.join(__dirname, 'public')));
 const llm = new ChatOllama({
     baseUrl: 'http://golem:11434',
     model: 'gpt-oss:20b',
-    temperature: 0.7
+    temperature: 0.7,
+    httpOptions: {
+        timeout: 120000,        // 2 minutes for headers
+        keepAliveTimeout: 60000, // Keep connection alive
+        headersTimeout: 120000   // Wait up to 2 min for headers
+    }
 });
 
 // ─── Session store ────────────────────────────────────────────────────────────
@@ -374,10 +379,25 @@ async function generateMovies(code) {
         broadcast(code, { type: 'phase_change', phase: 'voting' });
 
     } catch (err) {
-        console.error('LLM movie generation failed:', err);
+        const errorCode = err.cause?.code || err.code;
+        const isTimeout = errorCode === 'UND_ERR_HEADERS_TIMEOUT' || 
+                         errorCode === 'ETIMEDOUT' ||
+                         err.message?.includes('timeout');
+        
+        console.error(`[${code}] LLM generation failed (${isTimeout ? 'TIMEOUT' : 'ERROR'}):`, {
+            code: errorCode,
+            message: err.message,
+            cause: err.cause?.message
+        });
+        
+        const message = isTimeout
+            ? 'LLM inference took too long. Ollama might be busy. Please try again.'
+            : 'Failed to generate movie recommendations. Please try again.';
+        
         broadcast(code, {
             type: 'error',
-            message: 'Failed to generate movie recommendations. Please try again.'
+            message,
+            isTimeout
         });
         session.phase = 'questions';
         broadcast(code, { type: 'phase_change', phase: 'questions' });
