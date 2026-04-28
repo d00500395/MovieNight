@@ -298,26 +298,31 @@ async function generateMovies(code) {
     const session = sessions[code];
     if (!session) return;
 
-    // Compile all user responses
+    const startTime = Date.now();
     const allResponses = {};
     for (const [uid, user] of Object.entries(session.users)) {
         allResponses[user.name] = user.answers;
     }
 
-    // Build a detailed prompt
     const prompt = buildMoviePrompt(allResponses, session.maxLength);
+    console.log(`[${code}] Prompt built in ${Date.now() - startTime}ms`);
 
     try {
         const systemPrompt = `You are a movie recommendation assistant. You MUST respond with ONLY a JSON array — no explanation, no markdown, no code fences. The array must contain exactly 5 objects with these keys: title, year, genre, rating, runtime, description, whyItFits.
 
-Example format (respond EXACTLY like this, no other text):
-[{"title":"The Grand Budapest Hotel","year":"2014","genre":"Comedy/Drama","rating":"R","runtime":"100 min","description":"A concierge and his lobby boy navigate adventures in a famous European hotel.","whyItFits":"Visually stunning with dry humor."},{"title":"...","year":"...","genre":"...","rating":"...","runtime":"...","description":"...","whyItFits":"..."}]`;
+        Example format (respond using this EXACT format, no other text. Also, do NOT provide this example in your response unless it is the best response to the users' preferences):
+        [{"title":"The Grand Budapest Hotel","year":"2014","genre":"Comedy/Drama","rating":"R","runtime":"100 min","description":"A concierge and his lobby boy navigate adventures in a famous European hotel.","whyItFits":"Visually stunning with dry humor."},{"title":"...","year":"...","genre":"...","rating":"...","runtime":"...","description":"...","whyItFits":"..."}]`;
+
+        const llmStartTime = Date.now();
 
         const response = await llm.invoke([
             { role: 'system', content: systemPrompt },
             { role: 'user', content: prompt }
         ]);
 
+        const llmTime = Date.now() - llmStartTime;
+        console.log(`[${code}] LLM inference took ${llmTime}ms`);
+        
         let content = typeof response.content === 'string'
             ? response.content
             : JSON.stringify(response.content);
