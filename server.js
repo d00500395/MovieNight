@@ -12,7 +12,7 @@ app.use('/movienight', express.static(path.join(__dirname, 'public')));
 // ─── Ollama LLM ───────────────────────────────────────────────────────────────
 const llm = new ChatOllama({
     baseUrl: 'http://golem:11434',
-    model: 'qwen3.6:35b-a3b-coding-nvfp4',
+    model: 'gpt-oss:20b',
     temperature: 0.7,
     httpOptions: {
         timeout: 120000,
