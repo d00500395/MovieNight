@@ -333,7 +333,7 @@ async function generateMovies(code) {
     try {
         const systemPrompt = `You are a movie recommendation assistant. You MUST respond with ONLY a JSON array — no explanation, no markdown, no code fences. The array must contain exactly 5 objects with these keys: title, year, genre, rating, runtime, description, whyItFits.
 
-        Example format (respond using this EXACT format, no other text. Also, do NOT provide this example in your response unless it is the best response to the users' preferences):
+        Example format (respond using this EXACT format, no other text. Use only the format in this example, not the content in the example.):
         [{"title":"The Grand Budapest Hotel","year":"2014","genre":"Comedy/Drama","rating":"R","runtime":"100 min","description":"A concierge and his lobby boy navigate adventures in a famous European hotel.","whyItFits":"Visually stunning with dry humor."},{"title":"...","year":"...","genre":"...","rating":"...","runtime":"...","description":"...","whyItFits":"..."}]`;
 
         const llmStartTime = Date.now();
